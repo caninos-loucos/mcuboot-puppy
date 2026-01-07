@@ -59,10 +59,16 @@ primary slot and adds a header and trailer that the bootloader is expecting:
       extension, otherwise binary format is used
 
     Options:
+      --vid TEXT                      Unique vendor identifier, format:
+                                      (<raw_uuid>|<domain_name)>
+      --cid TEXT                      Unique image class identifier, format:
+                                      (<raw_uuid>|<image_class_name>)
       --vector-to-sign [payload|digest]
                                       send to OUTFILE the payload or payloads
                                       digest instead of complied image. These data
                                       can be used for external image signing
+      --hmac-sha [auto|256|512]       sha algorithm used in HKDF/HMAC in ECIES key
+                                      exchange TLV
       --sha [auto|256|384|512]        selected sha algorithm to use; defaults to
                                       "auto" which is 256 if no cryptographic
                                       signature is used, or default for signature
@@ -91,8 +97,7 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       the `auto` keyword to automatically generate
                                       it from the image version.
       -d, --dependencies TEXT         Add dependence on another image, format:
-                                      "(<image_ID>,[<slot:active|primary|secondary>,]
-                                      <image_version>), ... "
+                                      "(<image_ID>,<image_version>), ... "
       --pad-sig                       Add 0-2 bytes of padding to ECDSA signature
                                       (for mcuboot <1.5)
       -H, --header-size INTEGER       [required]
@@ -103,6 +108,8 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       secondary slot.  [required]
       --pad                           Pad image to --slot-size bytes, adding
                                       trailer magic
+      --test                          When padding the image, mark it for a test
+                                      swap (implies --pad)
       --confirm                       When padding the image, mark it as confirmed
                                       (implies --pad)
       -M, --max-sectors INTEGER       When padding allow for this amount of
@@ -117,8 +124,6 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       capabilities,so it can be installed in the
                                       primary slot, and encrypted when swapped to
                                       the secondary.
-      --skip-encryption               Set encryption flags and TLV's without
-                                      applying encryption.
       --compression [disabled|lzma2|lzma2armthumb]
                                       Enable image compression using specified
                                       type. Will fall back without image
@@ -182,16 +187,6 @@ A dependency can be specified in the following way:
 which the current image depends on. The `image_version` is the minimum version
 of that image to satisfy compliance. For example `-d "(1, 1.2.3+0)"` means this
 image depends on Image 1 which version has to be at least 1.2.3+0.
-
-In addition, a dependency can specify the slot as follows:
-`-d "(image_id, slot, image_version)"`. The `image_id` is the number of the
-image on which the current image depends.
-The slot specifies which slots of the image are to be taken into account
-(`active`: primary or secondary, `primary`: only primary `secondary`: only
-secondary slot). The `image_version` is the minimum version of that image to
-fulfill the requirements.
-For example `-d "(1, primary, 1.2.3+0)"` means that this image depends on the
-primary slot of the Image 1, whose version must be at least 1.2.3+0.
 
 The `--public-key-format` argument can be used to distinguish where the public
 key is stored for image authentication. The `hash` option is used by default, in
