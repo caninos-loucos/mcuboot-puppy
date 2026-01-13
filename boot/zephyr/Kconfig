@@ -623,17 +623,19 @@ config BOOT_SWAP_SAVE_ENCTLV
 endif # !SINGLE_APPLICATION_SLOT
 
 # Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_SRAM := zephyr,sram
+DT_CHOSEN_Z_RAM_LOAD_DEV := mcuboot,ram-load-dev
 
 if BOOT_RAM_LOAD || SINGLE_APPLICATION_SLOT_RAM_LOAD
+
 config BOOT_IMAGE_EXECUTABLE_RAM_START
 	hex "Boot image executable ram start"
-	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM))
+	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_RAM_LOAD_DEV))
 
 config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	int "Boot image executable base size"
-	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
-endif
+	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_RAM_LOAD_DEV),0)
+
+endif # BOOT_RAM_LOAD || SINGLE_APPLICATION_SLOT_RAM_LOAD
 
 config MULTIPLE_EXECUTABLE_RAM_REGIONS
 	bool "Platform RAM is split over multiple areas"

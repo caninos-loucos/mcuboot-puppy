@@ -2402,6 +2402,8 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+    BOOT_LOG_DBG("context_boot_go");
+
     rc = boot_open_all_flash_areas(state);
     if (rc != 0) {
         goto out;
@@ -2436,7 +2438,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #endif
 
     IMAGES_ITER(BOOT_CURR_IMG(state)) {
-#if BOOT_IMAGE_NUMBER > 1
+#if (BOOT_IMAGE_NUMBER > 1)
         if (state->img_mask[BOOT_CURR_IMG(state)]) {
             continue;
         }
