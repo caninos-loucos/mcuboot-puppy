@@ -1,5 +1,6 @@
 / {
     chosen {
+        mcuboot,ram-load-dev = &sram;
         zephyr,sram = &bootram;
     };
 };
