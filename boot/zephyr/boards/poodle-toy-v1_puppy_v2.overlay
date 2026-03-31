@@ -3,4 +3,33 @@
         mcuboot,ram-load-dev = &sram;
         zephyr,sram = &bootram;
     };
+
+    aliases {
+        mcuboot-button0 = &button0;
+    };
+
+    buttons {
+        compatible = "gpio-keys";
+
+        button0: button0 {
+            gpios = <&gpio0 9 0>;
+			label = "BOOT Button";
+        };
+    };
+};
+
+&itcm {
+    status = "disabled";
+};
+
+&dtcm {
+    status = "disabled";
+};
+
+&soc {
+    bootram: bootram@1c000000 {
+        compatible = "mmio-sram";
+        reg = <0x1c000000 DT_SIZE_K(64)>;
+        status = "okay";
+    };
 };
