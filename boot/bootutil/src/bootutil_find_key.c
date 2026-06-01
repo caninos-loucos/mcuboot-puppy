@@ -120,16 +120,6 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 #endif /* !MCUBOOT_BUILTIN_KEY */
 
 #else /* !MCUBOOT_BYPASS_KEY_MATCH */
-#if !defined(MCUBOOT_HW_KEY)
-int bootutil_find_key(uint8_t *key, uint8_t key_len)
-{
-    (void)key;
-    (void)key_len;
-
-    /* There is only one key, so it always matches */
-    return 0;
-}
-#else
 int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 {
     (void)image_index;
@@ -139,6 +129,5 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     /* There is only one key, so it always matches */
     return 0;
 }
-#endif /* !MCUBOOT_HW_KEY */
 #endif /* !MCUBOOT_BYPASS_KEY_MATCH */
 #endif /* EXPECTED_SIG_TLV */

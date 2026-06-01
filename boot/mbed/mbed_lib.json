@@ -113,9 +113,9 @@
             "help": "Updateable image number (NOT TESTED)",
             "macro_name": "MCUBOOT_IMAGE_NUMBER"
         },
-        "mcuboot-swap-save-enctlv": {
+        "MCUBOOT_SWAP_SAVE_ENCTLV": {
             "help": "Swap save enctlv (NOT TESTED)",
-            "macro_name": "MCUBOOT_SWAP_SAVE_ENCTLV",
+            "macro_name": "MCUBOOT_IMAGE_NUMBER",
             "value": null
         },
         "encrypt-rsa": {

@@ -26,7 +26,6 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/timer/system_timer.h>
 #include <zephyr/usb/usb_device.h>
-#include <zephyr/devicetree/partitions.h>
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
 
@@ -66,14 +65,14 @@
 #define SECONDARY_SLOT  1
 
 #define IMAGE0_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_0), reg, 0)
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 0)
 #define IMAGE0_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_0), reg, 1)
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 1)
 
 #define IMAGE1_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_1), reg, 0)
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 0)
 #define IMAGE1_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_1), reg, 1)
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 1)
 
 #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
@@ -95,14 +94,13 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
-#if defined(CONFIG_LOG)
-#include <zephyr/logging/log_ctrl.h>
-
-#if !defined(CONFIG_LOG_MODE_IMMEDIATE) && !defined(CONFIG_LOG_MODE_MINIMAL)
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+    !defined(CONFIG_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
 #else
+#include <zephyr/logging/log_ctrl.h>
 
 #define BOOT_LOG_PROCESSING_INTERVAL K_MSEC(30) /* [ms] */
 
@@ -110,19 +108,19 @@ const struct boot_uart_funcs boot_funcs = {
 K_THREAD_STACK_DEFINE(boot_log_stack, CONFIG_MCUBOOT_LOG_THREAD_STACK_SIZE);
 struct k_thread boot_log_thread;
 volatile bool boot_log_stop = false;
-K_SEM_DEFINE(boot_log_sem, 0, 1);
+K_SEM_DEFINE(boot_log_sem, 1, 1);
 
 /* log processing need to be initalized by the application */
 #define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
 #define ZEPHYR_BOOT_LOG_STOP() zephyr_boot_log_stop()
 #endif /* CONFIG_LOG_PROCESS_THREAD */
-#endif /* !IMMEDIATE && !MINIMAL */
-#endif /* CONFIG_LOG */
-
-#if !defined(ZEPHYR_BOOT_LOG_START)
-#define ZEPHYR_BOOT_LOG_START() ((void)0)
-#define ZEPHYR_BOOT_LOG_STOP() ((void)0)
-#endif
+#else
+/* synchronous log mode doesn't need to be initalized by the application */
+#define ZEPHYR_BOOT_LOG_START() do { } while (false)
+#define ZEPHYR_BOOT_LOG_STOP() do { } while (false)
+#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+        * !defined(CONFIG_LOG_MODE_MINIMAL)
+	*/
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
@@ -300,19 +298,9 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 }
 
-#elif defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
-
-static void do_boot(struct boot_rsp *rsp)
-{
-    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
-    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
-
-    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
-                PRIMARY_SLOT : SECONDARY_SLOT;
-    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
-}
-
 #elif defined(CONFIG_XTENSA)
+
+#ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
 
 #define SRAM_BASE_ADDRESS	0xBE030000
 
@@ -341,18 +329,33 @@ static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
 done:
     flash_area_close(fap);
 }
+#endif /* !CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
+/* Entry point (.ResetVector) is at the very beginning of the image.
+ * Simply copy the image to a suitable location and jump there.
+ */
 static void do_boot(struct boot_rsp *rsp)
 {
+#ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
     void *start;
+#endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
     BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
     BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
 
+#ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
+    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
+                PRIMARY_SLOT : SECONDARY_SLOT;
+    /* Load memory segments and start from entry point */
+    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
+#else
+    /* Copy from the flash to HP SRAM */
     copy_img_to_SRAM(0, rsp->br_hdr->ih_hdr_size);
 
+    /* Jump to entry point */
     start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
     ((void (*)(void))start)();
+#endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 }
 
 #elif defined(CONFIG_ARC)
@@ -446,14 +449,12 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
 
 void zephyr_boot_log_start(void)
 {
-    /* Start logging thread immediately — the polling interval is only
-     * used between processing rounds, not as a startup delay.
-     */
+    /* start logging thread */
     k_thread_create(&boot_log_thread, boot_log_stack,
                     K_THREAD_STACK_SIZEOF(boot_log_stack),
                     boot_log_thread_func, NULL, NULL, NULL,
                     K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
-                    K_NO_WAIT);
+                    BOOT_LOG_PROCESSING_INTERVAL);
 
     k_thread_name_set(&boot_log_thread, "logging");
 }
@@ -462,22 +463,12 @@ void zephyr_boot_log_stop(void)
 {
     boot_log_stop = true;
 
-    /* Wake the logging thread immediately if it's in k_sleep().
-     * Without this, the thread may sit idle for up to one polling
-     * interval before it notices boot_log_stop and drains the
-     * final messages.
-     */
-    k_wakeup(&boot_log_thread);
-
     /* wait until log procesing thread expired
      * This can be reworked using a thread_join() API once a such will be
      * available in zephyr.
      * see https://github.com/zephyrproject-rtos/zephyr/issues/21500
      */
     (void)k_sem_take(&boot_log_sem, K_FOREVER);
-
-    /* Entice the log backends to flush their contents */
-    LOG_PANIC();
 }
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)

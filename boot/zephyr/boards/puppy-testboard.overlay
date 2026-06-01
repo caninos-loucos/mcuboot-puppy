@@ -4,3 +4,16 @@
         zephyr,sram = &bootram;
     };
 };
+
+aliases {
+    mcuboot-button0 = &button0;
+};
+
+buttons {
+    compatible = "gpio-keys";
+
+    button0: button0 {
+        gpios = <&gpio0 9 0>;
+        label = "BOOT Button";
+    };
+};

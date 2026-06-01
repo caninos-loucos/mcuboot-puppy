@@ -41,8 +41,6 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#ifdef MCUBOOT_RAM_LOAD
-
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifndef MULTIPLE_EXECUTABLE_RAM_REGIONS
@@ -435,5 +433,3 @@ int boot_load_image_from_flash_to_sram(struct boot_loader_state *state,
 
     return boot_load_image_to_sram(state);
 }
-
-#endif
